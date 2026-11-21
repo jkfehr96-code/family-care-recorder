@@ -1,1 +1,970 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#14304a">
+  <title>Family Care - Voice Recorder</title>
+
+  <style>
+    :root {
+      font-family: Arial, Helvetica, sans-serif;
+      color: #17324a;
+      background: #f3f8fa;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #14304a;
+      color: white;
+      text-align: center;
+      padding: 20px 14px;
+    }
+
+    header h1 {
+      font-size: 25px;
+      margin: 0 0 6px;
+    }
+
+    header p {
+      margin: 0;
+      font-size: 15px;
+      color: #e2f3f3;
+    }
+
+    main {
+      max-width: 560px;
+      margin: 0 auto;
+      padding: 18px 14px 45px;
+    }
+
+    .panel {
+      background: white;
+      border-radius: 18px;
+      padding: 23px 20px;
+      box-shadow: 0 5px 23px #16334a13;
+    }
+
+    .intro {
+      text-align: center;
+      margin: 0 0 19px;
+      font-size: 19px;
+      line-height: 1.45;
+    }
+
+    .timer {
+      text-align: center;
+      font-size: 47px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      margin: 12px 0 19px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .button {
+      display: block;
+      width: 100%;
+      min-height: 67px;
+      padding: 14px;
+      margin: 12px 0;
+      border: 0;
+      border-radius: 13px;
+      font-size: 22px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .button:focus-visible,
+    a:focus-visible {
+      outline: 4px solid #ecb64b;
+      outline-offset: 3px;
+    }
+
+    .button:disabled {
+      cursor: not-allowed;
+      opacity: .43;
+    }
+
+    .record {
+      background: #cf2d37;
+      color: white;
+    }
+
+    .stop {
+      background: #214b65;
+      color: white;
+    }
+
+    .save {
+      background: #087d72;
+      color: white;
+    }
+
+    .secondary {
+      min-height: 50px;
+      background: #e8f1f5;
+      color: #17324a;
+      font-size: 17px;
+    }
+
+    .status {
+      border-radius: 12px;
+      padding: 13px;
+      background: #ebf4f5;
+      text-align: center;
+      font-size: 16px;
+      line-height: 1.45;
+      margin-top: 16px;
+    }
+
+    .status.error {
+      background: #fff1ef;
+      color: #852021;
+    }
+
+    .status.success {
+      background: #e8f6ee;
+      color: #125932;
+    }
+
+    .playback {
+      display: none;
+      margin: 18px 0 0;
+    }
+
+    .playback strong {
+      display: block;
+      margin-bottom: 10px;
+      font-size: 17px;
+    }
+
+    audio {
+      width: 100%;
+    }
+
+    .details {
+      color: #496477;
+      font-size: 14px;
+      margin: 10px 0;
+      text-align: center;
+    }
+
+    .download {
+      display: none;
+      text-align: center;
+      padding: 12px;
+      font-size: 15px;
+      color: #155a72;
+    }
+
+    .hint {
+      margin-top: 18px;
+      text-align: center;
+      color: #526b78;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>Family Care</h1>
+    <p>Voice Message Recorder</p>
+  </header>
+
+  <main>
+    <section class="panel" aria-label="Voice recorder">
+
+      <p class="intro">
+        Record a message for your family.<br>
+        Press the red button to begin.
+      </p>
+
+      <div
+        class="timer"
+        id="timer"
+        aria-label="Recording duration"
+      >00:00</div>
+
+      <button
+        class="button record"
+        id="startButton"
+        type="button"
+      >🔴 Start Recording</button>
+
+      <button
+        class="button stop"
+        id="stopButton"
+        type="button"
+        disabled
+      >■ Stop Recording</button>
+
+      <div class="playback" id="playbackArea">
+        <strong>Listen to your message:</strong>
+
+        <audio
+          id="playback"
+          controls
+          preload="metadata"
+        ></audio>
+
+        <div
+          class="details"
+          id="recordingDetails"
+        ></div>
+      </div>
+
+      <button
+        class="button save"
+        id="saveButton"
+        type="button"
+        disabled
+      >✓ Save Message</button>
+
+      <button
+        class="button secondary"
+        id="againButton"
+        type="button"
+        hidden
+      >Record Again</button>
+
+      <button
+        class="button secondary"
+        id="doneButton"
+        type="button"
+        hidden
+      >Done</button>
+
+      <div
+        id="status"
+        class="status"
+        role="status"
+        aria-live="polite"
+      >
+        Ready to record.
+      </div>
+
+      <a
+        id="downloadLink"
+        class="download"
+        href="#"
+        download="family-voice-message.webm"
+      >Download recording instead</a>
+    </section>
+
+    <p class="hint">
+      The microphone is used only while recording.
+      Messages are not uploaded until you press Save.
+    </p>
+  </main>
+
+  <script>
+    'use strict';
+
+    // Family Care Organizer will open this page with
+    // a short-lived connection code. The recorder
+    // never receives the family's login token.
+
+    const launch = new URLSearchParams(
+      location.hash.slice(1)
+    );
+
+    const requestId = launch.get('request') || '';
+    const requestedOrigin = launch.get('origin') || '';
+
+    function isApprovedAppOrigin(value) {
+      try {
+        const url = new URL(value);
+        const host = url.hostname.toLowerCase();
+
+        return url.protocol === 'https:' &&
+          (
+            host === 'script.google.com' ||
+            host === 'script.googleusercontent.com' ||
+            host.endsWith('-script.googleusercontent.com') ||
+            host.endsWith('.script.googleusercontent.com')
+          ) &&
+          url.origin === value;
+
+      } catch (_) {
+        return false;
+      }
+    }
+
+    const appOrigin = isApprovedAppOrigin(
+      requestedOrigin
+    ) ? requestedOrigin : '';
+
+    const canMessageApp = Boolean(
+      appOrigin && requestId && window.opener
+    );
+
+    const startButton =
+      document.getElementById('startButton');
+
+    const stopButton =
+      document.getElementById('stopButton');
+
+    const saveButton =
+      document.getElementById('saveButton');
+
+    const againButton =
+      document.getElementById('againButton');
+
+    const doneButton =
+      document.getElementById('doneButton');
+
+    const statusBox =
+      document.getElementById('status');
+
+    const timerBox =
+      document.getElementById('timer');
+
+    const playbackArea =
+      document.getElementById('playbackArea');
+
+    const playback =
+      document.getElementById('playback');
+
+    const recordingDetails =
+      document.getElementById('recordingDetails');
+
+    const downloadLink =
+      document.getElementById('downloadLink');
+
+    const MAX_BYTES = 5 * 1024 * 1024;
+
+    let connected = false;
+    let recorder = null;
+    let microphone = null;
+    let chunks = [];
+    let audioBlob = null;
+    let audioUrl = '';
+    let startedAt = 0;
+    let durationSeconds = 0;
+    let timerInterval = null;
+    let waitingForSave = false;
+    let saved = false;
+
+    function setStatus(message, kind) {
+      statusBox.textContent = message;
+
+      statusBox.className =
+        'status' + (kind ? ' ' + kind : '');
+    }
+
+    function formatTime(seconds) {
+      const s = Math.max(
+        0,
+        Math.floor(seconds)
+      );
+
+      return String(
+        Math.floor(s / 60)
+      ).padStart(2, '0') + ':' +
+        String(s % 60).padStart(2, '0');
+    }
+
+    function updateButtons() {
+      const recording =
+        recorder &&
+        recorder.state === 'recording';
+
+      startButton.disabled = Boolean(
+        recording || waitingForSave || saved
+      );
+
+      stopButton.disabled = !recording;
+
+      saveButton.disabled = Boolean(
+        !audioBlob ||
+        !connected ||
+        recording ||
+        waitingForSave ||
+        saved ||
+        audioBlob.size > MAX_BYTES
+      );
+
+      againButton.hidden =
+        !audioBlob || waitingForSave || saved;
+
+      doneButton.hidden = !saved;
+    }
+
+    function stopMicrophone() {
+      if (microphone) {
+        microphone.getTracks().forEach(
+          track => track.stop()
+        );
+
+        microphone = null;
+      }
+    }
+
+    function clearOldRecording() {
+      if (audioUrl) {
+        URL.revokeObjectURL(audioUrl);
+      }
+
+      audioUrl = '';
+      audioBlob = null;
+      chunks = [];
+      durationSeconds = 0;
+
+      playback.removeAttribute('src');
+      playback.load();
+
+      playbackArea.style.display = 'none';
+      downloadLink.style.display = 'none';
+
+      timerBox.textContent = '00:00';
+    }
+
+    function bestMimeType() {
+      const choices = [
+        'audio/webm;codecs=opus',
+        'audio/mp4',
+        'audio/ogg;codecs=opus',
+        'audio/webm'
+      ];
+
+      for (const type of choices) {
+        if (MediaRecorder.isTypeSupported(type)) {
+          return type;
+        }
+      }
+
+      return '';
+    }
+
+    function extensionFor(type) {
+      if (
+        type.includes('mp4') ||
+        type.includes('m4a')
+      ) {
+        return 'm4a';
+      }
+
+      if (type.includes('ogg')) {
+        return 'ogg';
+      }
+
+      if (type.includes('wav')) {
+        return 'wav';
+      }
+
+      return 'webm';
+    }
+
+    async function beginRecording() {
+      if (
+        !navigator.mediaDevices ||
+        !navigator.mediaDevices.getUserMedia ||
+        typeof MediaRecorder === 'undefined'
+      ) {
+        setStatus(
+          'This browser cannot record audio. ' +
+          'Try opening the recorder in Chrome or Safari.',
+          'error'
+        );
+        return;
+      }
+
+      clearOldRecording();
+      saved = false;
+
+      setStatus(
+        'Requesting microphone permission…'
+      );
+
+      startButton.disabled = true;
+
+      try {
+        microphone =
+          await navigator.mediaDevices.getUserMedia({
+            audio: true
+          });
+
+        const mime = bestMimeType();
+
+        const options = mime
+          ? {
+              mimeType: mime,
+              audioBitsPerSecond: 64000
+            }
+          : {
+              audioBitsPerSecond: 64000
+            };
+
+        recorder = new MediaRecorder(
+          microphone,
+          options
+        );
+
+        chunks = [];
+
+        recorder.addEventListener(
+          'dataavailable',
+          event => {
+            if (event.data && event.data.size) {
+              chunks.push(event.data);
+            }
+          }
+        );
+
+        recorder.addEventListener(
+          'error',
+          () => {
+            stopMicrophone();
+            clearInterval(timerInterval);
+
+            setStatus(
+              'The recording stopped unexpectedly. ' +
+              'Please try again.',
+              'error'
+            );
+
+            updateButtons();
+          }
+        );
+
+        recorder.addEventListener(
+          'stop',
+          () => {
+            clearInterval(timerInterval);
+
+            durationSeconds = Math.max(
+              1,
+              Math.round(
+                (performance.now() - startedAt) / 1000
+              )
+            );
+
+            timerBox.textContent =
+              formatTime(durationSeconds);
+
+            stopMicrophone();
+
+            const recordedMime =
+              recorder.mimeType ||
+              chunks[0]?.type ||
+              'audio/webm';
+
+            audioBlob = new Blob(
+              chunks,
+              { type: recordedMime }
+            );
+
+            chunks = [];
+
+            if (!audioBlob.size) {
+              clearOldRecording();
+
+              setStatus(
+                'No sound was captured. ' +
+                'Please try recording again.',
+                'error'
+              );
+
+              updateButtons();
+              return;
+            }
+
+            audioUrl = URL.createObjectURL(
+              audioBlob
+            );
+
+            playback.src = audioUrl;
+
+            playbackArea.style.display =
+              'block';
+
+            const sizeMB = (
+              audioBlob.size / 1024 / 1024
+            ).toFixed(2);
+
+            recordingDetails.textContent =
+              formatTime(durationSeconds) +
+              ' · ' + sizeMB + ' MB';
+
+            downloadLink.href = audioUrl;
+
+            downloadLink.download =
+              'family-voice-message.' +
+              extensionFor(recordedMime);
+
+            downloadLink.style.display =
+              'block';
+
+            if (audioBlob.size > MAX_BYTES) {
+              setStatus(
+                'This message is too long to upload ' +
+                '(over 5 MB). Please record a shorter message.',
+                'error'
+              );
+
+            } else if (!connected) {
+              setStatus(
+                'Recording ready. You can listen or download it. ' +
+                'Saving to Family Care Organizer will be enabled ' +
+                'when the connection is set up.'
+              );
+
+            } else {
+              setStatus(
+                'Recording ready. Listen to it, ' +
+                'then press Save Message.'
+              );
+            }
+
+            updateButtons();
+          }
+        );
+
+        recorder.start(1000);
+        startedAt = performance.now();
+
+        timerInterval = setInterval(
+          () => {
+            timerBox.textContent = formatTime(
+              (performance.now() - startedAt) / 1000
+            );
+          },
+          250
+        );
+
+        setStatus(
+          'Recording now. Speak your message, ' +
+          'then press Stop.'
+        );
+
+      } catch (error) {
+        stopMicrophone();
+
+        const denied =
+          error &&
+          (
+            error.name === 'NotAllowedError' ||
+            error.name === 'PermissionDeniedError'
+          );
+
+        setStatus(
+          denied
+            ? 'Microphone access was blocked. ' +
+              'Allow the microphone for this website ' +
+              'in your browser settings, then try again.'
+            : 'Could not start the microphone. ' +
+              'Check your device settings and try again.',
+          'error'
+        );
+      }
+
+      updateButtons();
+    }
+
+    function stopRecording() {
+      if (
+        !recorder ||
+        recorder.state !== 'recording'
+      ) {
+        return;
+      }
+
+      stopButton.disabled = true;
+
+      setStatus('Preparing your message…');
+
+      recorder.stop();
+      stopMicrophone();
+    }
+
+    function sendToOrganizer(message) {
+      if (
+        !canMessageApp ||
+        !window.opener ||
+        window.opener.closed
+      ) {
+        return false;
+      }
+
+      try {
+        window.opener.postMessage(
+          {
+            ...message,
+            requestId
+          },
+          appOrigin
+        );
+
+        return true;
+
+      } catch (_) {
+        return false;
+      }
+    }
+
+    function announceReady() {
+      if (!connected && canMessageApp) {
+        sendToOrganizer({
+          type: 'FCO_RECORDER_READY'
+        });
+      }
+    }
+
+    window.addEventListener(
+      'message',
+      event => {
+        if (
+          !canMessageApp ||
+          event.origin !== appOrigin ||
+          event.source !== window.opener
+        ) {
+          return;
+        }
+
+        const data = event.data;
+
+        if (
+          !data ||
+          data.requestId !== requestId
+        ) {
+          return;
+        }
+
+        if (
+          data.type === 'FCO_RECORDER_CONNECTED'
+        ) {
+          connected = true;
+
+          if (audioBlob && !saved) {
+            setStatus(
+              'Connected. Press Save Message ' +
+              'when you are ready.'
+            );
+          }
+
+          updateButtons();
+
+        } else if (
+          data.type === 'FCO_RECORDER_SAVED'
+        ) {
+          waitingForSave = false;
+          saved = true;
+
+          setStatus(
+            'Message saved successfully! ' +
+            'Your family can listen to it in ' +
+            'Family Care Organizer.',
+            'success'
+          );
+
+          updateButtons();
+
+        } else if (
+          data.type === 'FCO_RECORDER_ERROR'
+        ) {
+          waitingForSave = false;
+
+          setStatus(
+            data.message ||
+              'Could not save the message. ' +
+              'Please try again.',
+            'error'
+          );
+
+          updateButtons();
+        }
+      }
+    );
+
+    function blobAsBase64(blob) {
+      return new Promise(
+        (resolve, reject) => {
+          const reader = new FileReader();
+
+          reader.onload = () => {
+            const result = String(
+              reader.result || ''
+            );
+
+            const comma = result.indexOf(',');
+
+            if (comma === -1) {
+              reject(
+                new Error(
+                  'Could not read recording.'
+                )
+              );
+            } else {
+              resolve(
+                result.slice(comma + 1)
+              );
+            }
+          };
+
+          reader.onerror = () => {
+            reject(
+              new Error(
+                'Could not read recording.'
+              )
+            );
+          };
+
+          reader.readAsDataURL(blob);
+        }
+      );
+    }
+
+    async function saveMessage() {
+      if (
+        !audioBlob ||
+        !connected ||
+        waitingForSave ||
+        audioBlob.size > MAX_BYTES
+      ) {
+        return;
+      }
+
+      waitingForSave = true;
+      updateButtons();
+
+      setStatus(
+        'Saving your message securely…'
+      );
+
+      try {
+        const mimeType =
+          audioBlob.type || 'audio/webm';
+
+        const base64Audio =
+          await blobAsBase64(audioBlob);
+
+        const delivered = sendToOrganizer({
+          type: 'FCO_RECORDER_SAVE',
+
+          recording: {
+            title: 'Voice Message',
+            category: 'General',
+            durationSeconds,
+            mimeType,
+            filename:
+              'family-voice-message.' +
+              extensionFor(mimeType),
+            base64Audio
+          }
+        });
+
+        if (!delivered) {
+          throw new Error(
+            'Connection to Family Care Organizer was lost.'
+          );
+        }
+
+      } catch (error) {
+        waitingForSave = false;
+
+        setStatus(
+          error.message ||
+            'Unable to send this message.',
+          'error'
+        );
+
+        updateButtons();
+      }
+    }
+
+    startButton.addEventListener(
+      'click',
+      beginRecording
+    );
+
+    stopButton.addEventListener(
+      'click',
+      stopRecording
+    );
+
+    againButton.addEventListener(
+      'click',
+      () => {
+        clearOldRecording();
+
+        setStatus(
+          'Ready to record a new message.'
+        );
+
+        updateButtons();
+      }
+    );
+
+    saveButton.addEventListener(
+      'click',
+      saveMessage
+    );
+
+    doneButton.addEventListener(
+      'click',
+      () => window.close()
+    );
+
+    window.addEventListener(
+      'pagehide',
+      () => {
+        stopMicrophone();
+        clearInterval(timerInterval);
+      }
+    );
+
+    if (!canMessageApp) {
+      setStatus(
+        'Recorder ready. You can test recording ' +
+        'and playback now. Saving directly to ' +
+        'Family Care Organizer will be connected ' +
+        'in the next step.'
+      );
+
+    } else {
+      announceReady();
+
+      let attempts = 0;
+
+      const handshake = setInterval(
+        () => {
+          if (
+            connected ||
+            attempts++ >= 15
+          ) {
+            clearInterval(handshake);
+
+            if (!connected) {
+              setStatus(
+                'Recorder is open, but the connection ' +
+                'to Family Care Organizer ' +
+                'is not available yet.'
+              );
+            }
+
+          } else {
+            announceReady();
+          }
+        },
+        1000
+      );
+    }
+
+    updateButtons();
+  </script>
+</body>
+</html>
+
